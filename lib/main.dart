@@ -37,12 +37,13 @@ class Produto {
 // Classe que cria o estado do produto
 class ConsultaProduto extends StatefulWidget {
   @override
-  _ConsultaProdutoState createState() => _ConsultaProdutoState();
+  _ConsultaProduto createState() => _ConsultaProduto();
 }
 
-// Controlar os dados criando uma lista de todos os produtos e produtos filtrados
-class _ConsultaProdutoState extends State<ConsultaProduto> {
-  late Future<List<Produto>> futureProdutos;
+// Criando os controllers para cada campo editavel do elemento Produto
+// Criando as listas de todos os produtos, produtos filtrados e produtos atualizados
+class _ConsultaProduto extends State<ConsultaProduto> {
+  late Future<List<Produto>> produtosAtualizados;
   List<Produto> produtos = [];
   List<Produto> produtosFiltrados = [];
 
@@ -53,8 +54,8 @@ class _ConsultaProdutoState extends State<ConsultaProduto> {
   @override
   void initState() {
     super.initState();
-    futureProdutos = fetchProdutos();
-    futureProdutos.then((value) {
+    produtosAtualizados = fetchProdutos();
+    produtosAtualizados.then((value) {
       setState(() {
         produtos = value;
         produtosFiltrados = value;
@@ -62,6 +63,7 @@ class _ConsultaProdutoState extends State<ConsultaProduto> {
     });
   }
 
+  // Buscando todos os produtos via API
   Future<List<Produto>> fetchProdutos() async {
     final response =
         await http.get(Uri.parse('http://127.0.0.1:5000/produtos'));
@@ -95,6 +97,25 @@ class _ConsultaProdutoState extends State<ConsultaProduto> {
     });
   }
 
+  // Método para executar a rota de exclusao de um produto da API
+  Future<void> excluirProduto(int productId) async {
+    final url = Uri.parse('http://127.0.0.1:5000/produtos/$productId');
+    final response = await http.delete(url);
+
+    if (response.statusCode == 200) {
+      print('Produto excluído com sucesso');
+      setState(() {
+        produtosAtualizados = fetchProdutos();
+        produtosAtualizados.then((value) {
+          produtos = value;
+          produtosFiltrados = value;
+        });
+      });
+    } else {
+      print('Erro ao excluir produto: ${response.statusCode}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,8 +139,8 @@ class _ConsultaProdutoState extends State<ConsultaProduto> {
             // Verifica se o produto foi adicionado e recarrega a lista
             if (result == true) {
               setState(() {
-                futureProdutos = fetchProdutos();
-                futureProdutos.then((value) {
+                produtosAtualizados = fetchProdutos();
+                produtosAtualizados.then((value) {
                   produtos = value;
                   produtosFiltrados = value;
                 });
@@ -177,7 +198,7 @@ class _ConsultaProdutoState extends State<ConsultaProduto> {
             SizedBox(height: 24),
             Expanded(
               child: FutureBuilder<List<Produto>>(
-                future: futureProdutos,
+                future: produtosAtualizados,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(child: CircularProgressIndicator());
@@ -229,9 +250,9 @@ class _ConsultaProdutoState extends State<ConsultaProduto> {
                                 children: [
                                   IconButton(
                                     icon: Icon(Icons.edit, color: Colors.blue),
-                                    onPressed: () {
+                                    onPressed: () async {
                                       // Passar detalhes do produto para edição
-                                      Navigator.push(
+                                      final result = await Navigator.push(
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) => PaginaProduto(
@@ -243,12 +264,22 @@ class _ConsultaProdutoState extends State<ConsultaProduto> {
                                           ),
                                         ),
                                       );
+
+                                      if (result == true) {
+                                        setState(() {
+                                          produtosAtualizados = fetchProdutos();
+                                          produtosAtualizados.then((value) {
+                                            produtos = value;
+                                            produtosFiltrados = value;
+                                          });
+                                        });
+                                      }
                                     },
                                   ),
                                   IconButton(
                                     icon: Icon(Icons.delete, color: Colors.red),
                                     onPressed: () {
-                                      print('Excluir produto ${produto.id}');
+                                      excluirProduto(produto.id);
                                     },
                                   ),
                                 ],
@@ -287,29 +318,46 @@ class PaginaProduto extends StatefulWidget {
   PaginaProdutoEdicao createState() => PaginaProdutoEdicao();
 }
 
+// Classe que cria os controller e verifica se acionará o POST ou o PUT da API
 class PaginaProdutoEdicao extends State<PaginaProduto> {
   final TextEditingController controllerDescricao = TextEditingController();
   final TextEditingController controllerCusto = TextEditingController();
 
-  Future<void> adicionarProduto() async {
-    final url = Uri.parse('http://127.0.0.1:5000/produtos');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'descricao': controllerDescricao.text,
-        'custo': double.tryParse(controllerCusto.text) ?? 0,
-      }),
-    );
-
-    if (response.statusCode == 201) {
-      print('Produto adicionado com sucesso');
-      Navigator.pop(context, true);
-    } else {
-      print('Erro ao adicionar produto: ${response.statusCode}');
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isEditing) {
+      controllerDescricao.text = widget.loja ?? '';
+      controllerCusto.text = widget.precoVenda?.replaceAll('R\$ ', '') ?? '';
     }
   }
 
+  Future<void> salvarProduto() async {
+    final url = Uri.parse(
+        'http://127.0.0.1:5000/produtos${widget.isEditing ? "/${widget.productId}" : ""}');
+    final body = jsonEncode({
+      'descricao': controllerDescricao.text,
+      'custo': double.tryParse(controllerCusto.text) ?? 0,
+    });
+
+    final response = widget.isEditing
+        ? await http.put(url,
+            headers: {'Content-Type': 'application/json'}, body: body)
+        : await http.post(url,
+            headers: {'Content-Type': 'application/json'}, body: body);
+
+    if ((widget.isEditing && response.statusCode == 200) ||
+        (!widget.isEditing && response.statusCode == 201)) {
+      print(widget.isEditing
+          ? 'Produto editado com sucesso'
+          : 'Produto adicionado com sucesso');
+      Navigator.pop(context, true);
+    } else {
+      print('Erro ao salvar produto: ${response.statusCode}');
+    }
+  }
+
+  // Página de inserção ou edicao de produto
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -351,7 +399,7 @@ class PaginaProdutoEdicao extends State<PaginaProduto> {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: adicionarProduto,
+              onPressed: salvarProduto,
               child: Text(widget.isEditing ? 'Salvar' : 'Adicionar'),
             ),
           ],
