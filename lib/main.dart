@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(MyApp());
@@ -15,8 +17,84 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// Class da página inicial de consulta de produtos
-class ConsultaProduto extends StatelessWidget {
+// Criando a instancia de Produto
+class Produto {
+  final int id;
+  final String descricao;
+  final double custo;
+
+  Produto({required this.id, required this.descricao, required this.custo});
+
+  factory Produto.fromJson(Map<String, dynamic> json) {
+    return Produto(
+      id: json['id_serial'],
+      descricao: json['descricao'],
+      custo: json['custo'].toDouble(),
+    );
+  }
+}
+
+// Classe que cria o estado do produto
+class ConsultaProduto extends StatefulWidget {
+  @override
+  _ConsultaProdutoState createState() => _ConsultaProdutoState();
+}
+
+// Controlar os dados criando uma lista de todos os produtos e produtos filtrados
+class _ConsultaProdutoState extends State<ConsultaProduto> {
+  late Future<List<Produto>> futureProdutos;
+  List<Produto> produtos = [];
+  List<Produto> produtosFiltrados = [];
+
+  final codigoController = TextEditingController();
+  final descricaoController = TextEditingController();
+  final custoController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    futureProdutos = fetchProdutos();
+    futureProdutos.then((value) {
+      setState(() {
+        produtos = value;
+        produtosFiltrados = value;
+      });
+    });
+  }
+
+  Future<List<Produto>> fetchProdutos() async {
+    final response =
+        await http.get(Uri.parse('http://127.0.0.1:5000/produtos'));
+
+    if (response.statusCode == 200) {
+      List jsonResponse = json.decode(response.body);
+      return jsonResponse.map((data) => Produto.fromJson(data)).toList();
+    } else {
+      throw Exception('Falha ao carregar produtos');
+    }
+  }
+
+  // Metodo para atualizar a lista com os produtos filtrados e caso o campo estiver vazio,
+  // buscara todos os itens
+  void filtrarProdutos() {
+    setState(() {
+      produtosFiltrados = produtos.where((produto) {
+        final codigoFiltro = codigoController.text;
+        final descricaoFiltro = descricaoController.text.toLowerCase();
+        final custoFiltro = custoController.text;
+
+        final correspondeCodigo = codigoFiltro.isEmpty ||
+            produto.id.toString().contains(codigoFiltro);
+        final correspondeDescricao = descricaoFiltro.isEmpty ||
+            produto.descricao.toLowerCase().contains(descricaoFiltro);
+        final correspondeCusto = custoFiltro.isEmpty ||
+            produto.custo.toString().contains(custoFiltro);
+
+        return correspondeCodigo && correspondeDescricao && correspondeCusto;
+      }).toList();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -51,114 +129,123 @@ class ConsultaProduto extends StatelessWidget {
                 SizedBox(
                   width: 200,
                   child: TextFormField(
+                    controller: codigoController,
                     decoration: InputDecoration(
                       labelText: 'Código',
                       border: OutlineInputBorder(),
                     ),
+                    onChanged: (value) => filtrarProdutos(),
                   ),
                 ),
                 SizedBox(
                   width: 200,
                   child: TextFormField(
+                    controller: descricaoController,
                     decoration: InputDecoration(
                       labelText: 'Descrição',
                       border: OutlineInputBorder(),
                     ),
+                    onChanged: (value) => filtrarProdutos(),
                   ),
                 ),
                 SizedBox(
                   width: 200,
                   child: TextFormField(
+                    controller: custoController,
                     decoration: InputDecoration(
                       labelText: 'Custo',
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
-                  ),
-                ),
-                SizedBox(
-                  width: 200,
-                  child: TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Preço de Venda',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
+                    onChanged: (value) => filtrarProdutos(),
                   ),
                 ),
               ],
             ),
             SizedBox(height: 24),
-            SizedBox(height: 8),
-            // Tabela de produtos
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: DataTable(
-                      columnSpacing: constraints.maxWidth * 0.05,
-                      columns: [
-                        DataColumn(
-                          label: Container(
-                            width: constraints.maxWidth * 0.2,
-                            child: Text('Código'),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Container(
-                            width: constraints.maxWidth * 0.3,
-                            child: Text('Descrição'),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Container(
-                            width: constraints.maxWidth * 0.2,
-                            child: Text('Custo'),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Container(
-                            width: constraints.maxWidth * 0.2,
-                            child: Text('Ações'),
-                          ),
-                        ),
-                      ],
-                      rows: [
-                        DataRow(cells: [
-                          DataCell(Text('001')),
-                          DataCell(Text('Produto A')),
-                          DataCell(Text('R\$ 10,00')),
-                          DataCell(Row(
-                            children: [
-                              IconButton(
-                                icon: Icon(Icons.edit, color: Colors.blue),
-                                onPressed: () {
-                                  // Passar detalhes do produto para edição
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => PaginaProduto(
-                                        isEditing: true,
-                                        productId: '001',
-                                        loja: 'Loja A',
-                                        precoVenda: 'R\$ 10,00',
-                                      ),
-                                    ),
-                                  );
-                                },
+              child: FutureBuilder<List<Produto>>(
+                future: futureProdutos,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Erro: ${snapshot.error}'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(child: Text('Nenhum produto encontrado'));
+                  }
+
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.vertical,
+                        child: DataTable(
+                          columnSpacing: constraints.maxWidth * 0.05,
+                          columns: [
+                            DataColumn(
+                              label: Container(
+                                width: constraints.maxWidth * 0.2,
+                                child: Text('Código'),
                               ),
-                              IconButton(
-                                icon: Icon(Icons.delete, color: Colors.red),
-                                onPressed: () {
-                                  print('Excluir produto 001');
-                                },
+                            ),
+                            DataColumn(
+                              label: Container(
+                                width: constraints.maxWidth * 0.3,
+                                child: Text('Descrição'),
                               ),
-                            ],
-                          )),
-                        ]),
-                      ],
-                    ),
+                            ),
+                            DataColumn(
+                              label: Container(
+                                width: constraints.maxWidth * 0.2,
+                                child: Text('Custo'),
+                              ),
+                            ),
+                            DataColumn(
+                              label: Container(
+                                width: constraints.maxWidth * 0.2,
+                                child: Text('Ações'),
+                              ),
+                            ),
+                          ],
+                          rows: produtosFiltrados.map((produto) {
+                            return DataRow(cells: [
+                              DataCell(Text(produto.id.toString())),
+                              DataCell(Text(produto.descricao)),
+                              DataCell(Text(
+                                  'R\$ ${produto.custo.toStringAsFixed(2)}')),
+                              DataCell(Row(
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () {
+                                      // Passar detalhes do produto para edição
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => PaginaProduto(
+                                            isEditing: true,
+                                            productId: produto.id.toString(),
+                                            loja: produto.descricao,
+                                            precoVenda:
+                                                'R\$ ${produto.custo.toStringAsFixed(2)}',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () {
+                                      print('Excluir produto ${produto.id}');
+                                    },
+                                  ),
+                                ],
+                              )),
+                            ]);
+                          }).toList(),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
