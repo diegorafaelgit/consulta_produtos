@@ -107,12 +107,24 @@ class _ConsultaProdutoState extends State<ConsultaProduto> {
         ),
         leading: IconButton(
           icon: Icon(Icons.add),
-          onPressed: () {
-            Navigator.push(
+          onPressed: () async {
+            // Aguarda o retorno da tela de adição de produto
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(
                   builder: (context) => PaginaProduto(isEditing: false)),
             );
+
+            // Verifica se o produto foi adicionado e recarrega a lista
+            if (result == true) {
+              setState(() {
+                futureProdutos = fetchProdutos();
+                futureProdutos.then((value) {
+                  produtos = value;
+                  produtosFiltrados = value;
+                });
+              });
+            }
           },
         ),
       ),
@@ -276,84 +288,27 @@ class PaginaProduto extends StatefulWidget {
 }
 
 class PaginaProdutoEdicao extends State<PaginaProduto> {
-  final List<Map<String, String>> tabelaLojas = [];
+  final TextEditingController controllerDescricao = TextEditingController();
+  final TextEditingController controllerCusto = TextEditingController();
 
-  final TextEditingController controllerLoja = TextEditingController();
-  final TextEditingController controllerPrecoVenda = TextEditingController();
+  Future<void> adicionarProduto() async {
+    final url = Uri.parse('http://127.0.0.1:5000/produtos');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'descricao': controllerDescricao.text,
+        'custo': double.tryParse(controllerCusto.text) ?? 0,
+      }),
+    );
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   // Adiciona os itens teste de loja e preço
-  //   tabelaLojas.addAll([
-  //     {'loja': 'Loja A', 'precoVenda': 'R\$ 10,00'},
-  //     {'loja': 'Loja B', 'precoVenda': 'R\$ 12,00'},
-  //   ]);
-
-  //   if (widget.isEditing) {
-  //     controllerLoja.text = widget.loja ?? '';
-  //     controllerPrecoVenda.text = widget.precoVenda ?? '';
-  //   }
-  // }
-
-  // void mostrarItensLoja({Map<String, String>? item}) {
-  //   final TextEditingController storeController = TextEditingController(
-  //     text: item != null ? item['loja'] : '',
-  //   );
-  //   final TextEditingController priceController = TextEditingController(
-  //     text: item != null ? item['precoVenda'] : '',
-  //   );
-
-  //   showDialog(
-  //     context: context,
-  //     builder: (context) {
-  //       return AlertDialog(
-  //         title: Text(item != null ? 'Editar Loja' : 'Adicionar Loja'),
-  //         content: Column(
-  //           mainAxisSize: MainAxisSize.min,
-  //           children: [
-  //             TextField(
-  //               controller: storeController,
-  //               decoration: InputDecoration(labelText: 'Loja'),
-  //             ),
-  //             TextField(
-  //               controller: priceController,
-  //               decoration: InputDecoration(labelText: 'Preço de Venda'),
-  //               keyboardType: TextInputType.number,
-  //             ),
-  //           ],
-  //         ),
-  //         actions: [
-  //           TextButton(
-  //             onPressed: () {
-  //               Navigator.of(context).pop();
-  //             },
-  //             child: Text('Cancelar'),
-  //           ),
-  //           TextButton(
-  //             onPressed: () {
-  //               if (item != null) {
-  //                 setState(() {
-  //                   item['loja'] = storeController.text;
-  //                   item['precoVenda'] = priceController.text;
-  //                 });
-  //               } else {
-  //                 setState(() {
-  //                   tabelaLojas.add({
-  //                     'loja': storeController.text,
-  //                     'precoVenda': priceController.text,
-  //                   });
-  //                 });
-  //               }
-  //               Navigator.of(context).pop();
-  //             },
-  //             child: Text('Salvar'),
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
+    if (response.statusCode == 201) {
+      print('Produto adicionado com sucesso');
+      Navigator.pop(context, true);
+    } else {
+      print('Erro ao adicionar produto: ${response.statusCode}');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -369,19 +324,9 @@ class PaginaProdutoEdicao extends State<PaginaProduto> {
               children: [
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.only(right: 0),
-                    child: TextFormField(
-                      decoration: InputDecoration(
-                        labelText: 'Código',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
                     padding: const EdgeInsets.only(left: 8.0),
                     child: TextFormField(
+                      controller: controllerDescricao,
                       decoration: InputDecoration(
                         labelText: 'Descrição',
                         border: OutlineInputBorder(),
@@ -393,6 +338,7 @@ class PaginaProdutoEdicao extends State<PaginaProduto> {
                   child: Padding(
                     padding: const EdgeInsets.only(left: 8.0),
                     child: TextFormField(
+                      controller: controllerCusto,
                       decoration: InputDecoration(
                         labelText: 'Custo',
                         border: OutlineInputBorder(),
@@ -403,86 +349,10 @@ class PaginaProdutoEdicao extends State<PaginaProduto> {
                 ),
               ],
             ),
-            SizedBox(height: 16),
-            // Botão para abrir modal para adicionar uma nova loja
-            // ElevatedButton(
-            //   onPressed: () {
-            //     mostrarItensLoja();
-            //   },
-            //   child: Row(
-            //     mainAxisSize: MainAxisSize.min,
-            //     children: [
-            //       Icon(Icons.add),
-            //     ],
-            //   ),
-            // ),
-            // SizedBox(height: 16),
-            // // Tabela de lojas relacionadas a esse item
-            // Expanded(
-            //   child: LayoutBuilder(
-            //     builder: (context, constraints) {
-            //       return DataTable(
-            //         columnSpacing: constraints.maxWidth * 0.05,
-            //         columns: [
-            //           DataColumn(
-            //             label: Container(
-            //               width: constraints.maxWidth * 0.3,
-            //               child: Text('Loja'),
-            //             ),
-            //           ),
-            //           DataColumn(
-            //             label: Container(
-            //               width: constraints.maxWidth * 0.3,
-            //               child: Text('Preço de Venda'),
-            //             ),
-            //           ),
-            //           DataColumn(
-            //             label: Container(
-            //               width: constraints.maxWidth * 0.3,
-            //               child: Text('Ações'),
-            //             ),
-            //           ),
-            //         ],
-            //         rows: tabelaLojas.map((item) {
-            //           return DataRow(cells: [
-            //             DataCell(Text(item['loja']!)),
-            //             DataCell(Text(item['precoVenda']!)),
-            //             DataCell(Row(
-            //               children: [
-            //                 IconButton(
-            //                   icon: Icon(Icons.edit, color: Colors.blue),
-            //                   onPressed: () {
-            //                     mostrarItensLoja(item: item);
-            //                   },
-            //                 ),
-            //                 IconButton(
-            //                   icon: Icon(Icons.delete, color: Colors.red),
-            //                   onPressed: () {
-            //                     setState(() {
-            //                       tabelaLojas.remove(item);
-            //                     });
-            //                   },
-            //                 ),
-            //               ],
-            //             )),
-            //           ]);
-            //         }).toList(),
-            //       );
-            //     },
-            //   ),
-            // ),
-            SizedBox(height: 24),
-            //  Botão para salvar as alterações da inserção/edição do produto
-            IconButton(
-              icon: Icon(Icons.save, size: 30),
-              onPressed: () {
-                if (widget.isEditing) {
-                  print('Produto editado com ID: ${widget.productId}');
-                } else {
-                  print('Produto adicionado');
-                }
-                Navigator.pop(context);
-              },
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: adicionarProduto,
+              child: Text(widget.isEditing ? 'Salvar' : 'Adicionar'),
             ),
           ],
         ),
