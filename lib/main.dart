@@ -281,79 +281,79 @@ class PaginaProdutoEdicao extends State<PaginaProduto> {
   final TextEditingController controllerLoja = TextEditingController();
   final TextEditingController controllerPrecoVenda = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    // Adiciona os itens teste de loja e preço
-    tabelaLojas.addAll([
-      {'loja': 'Loja A', 'precoVenda': 'R\$ 10,00'},
-      {'loja': 'Loja B', 'precoVenda': 'R\$ 12,00'},
-    ]);
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   // Adiciona os itens teste de loja e preço
+  //   tabelaLojas.addAll([
+  //     {'loja': 'Loja A', 'precoVenda': 'R\$ 10,00'},
+  //     {'loja': 'Loja B', 'precoVenda': 'R\$ 12,00'},
+  //   ]);
 
-    if (widget.isEditing) {
-      controllerLoja.text = widget.loja ?? '';
-      controllerPrecoVenda.text = widget.precoVenda ?? '';
-    }
-  }
+  //   if (widget.isEditing) {
+  //     controllerLoja.text = widget.loja ?? '';
+  //     controllerPrecoVenda.text = widget.precoVenda ?? '';
+  //   }
+  // }
 
-  void mostrarItensLoja({Map<String, String>? item}) {
-    final TextEditingController storeController = TextEditingController(
-      text: item != null ? item['loja'] : '',
-    );
-    final TextEditingController priceController = TextEditingController(
-      text: item != null ? item['precoVenda'] : '',
-    );
+  // void mostrarItensLoja({Map<String, String>? item}) {
+  //   final TextEditingController storeController = TextEditingController(
+  //     text: item != null ? item['loja'] : '',
+  //   );
+  //   final TextEditingController priceController = TextEditingController(
+  //     text: item != null ? item['precoVenda'] : '',
+  //   );
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(item != null ? 'Editar Loja' : 'Adicionar Loja'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: storeController,
-                decoration: InputDecoration(labelText: 'Loja'),
-              ),
-              TextField(
-                controller: priceController,
-                decoration: InputDecoration(labelText: 'Preço de Venda'),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (item != null) {
-                  setState(() {
-                    item['loja'] = storeController.text;
-                    item['precoVenda'] = priceController.text;
-                  });
-                } else {
-                  setState(() {
-                    tabelaLojas.add({
-                      'loja': storeController.text,
-                      'precoVenda': priceController.text,
-                    });
-                  });
-                }
-                Navigator.of(context).pop();
-              },
-              child: Text('Salvar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) {
+  //       return AlertDialog(
+  //         title: Text(item != null ? 'Editar Loja' : 'Adicionar Loja'),
+  //         content: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             TextField(
+  //               controller: storeController,
+  //               decoration: InputDecoration(labelText: 'Loja'),
+  //             ),
+  //             TextField(
+  //               controller: priceController,
+  //               decoration: InputDecoration(labelText: 'Preço de Venda'),
+  //               keyboardType: TextInputType.number,
+  //             ),
+  //           ],
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () {
+  //               Navigator.of(context).pop();
+  //             },
+  //             child: Text('Cancelar'),
+  //           ),
+  //           TextButton(
+  //             onPressed: () {
+  //               if (item != null) {
+  //                 setState(() {
+  //                   item['loja'] = storeController.text;
+  //                   item['precoVenda'] = priceController.text;
+  //                 });
+  //               } else {
+  //                 setState(() {
+  //                   tabelaLojas.add({
+  //                     'loja': storeController.text,
+  //                     'precoVenda': priceController.text,
+  //                   });
+  //                 });
+  //               }
+  //               Navigator.of(context).pop();
+  //             },
+  //             child: Text('Salvar'),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -405,74 +405,74 @@ class PaginaProdutoEdicao extends State<PaginaProduto> {
             ),
             SizedBox(height: 16),
             // Botão para abrir modal para adicionar uma nova loja
-            ElevatedButton(
-              onPressed: () {
-                mostrarItensLoja();
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.add),
-                ],
-              ),
-            ),
-            SizedBox(height: 16),
-            // Tabela de lojas relacionadas a esse item
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return DataTable(
-                    columnSpacing: constraints.maxWidth * 0.05,
-                    columns: [
-                      DataColumn(
-                        label: Container(
-                          width: constraints.maxWidth * 0.3,
-                          child: Text('Loja'),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Container(
-                          width: constraints.maxWidth * 0.3,
-                          child: Text('Preço de Venda'),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Container(
-                          width: constraints.maxWidth * 0.3,
-                          child: Text('Ações'),
-                        ),
-                      ),
-                    ],
-                    rows: tabelaLojas.map((item) {
-                      return DataRow(cells: [
-                        DataCell(Text(item['loja']!)),
-                        DataCell(Text(item['precoVenda']!)),
-                        DataCell(Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () {
-                                mostrarItensLoja(item: item);
-                              },
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                setState(() {
-                                  tabelaLojas.remove(item);
-                                });
-                              },
-                            ),
-                          ],
-                        )),
-                      ]);
-                    }).toList(),
-                  );
-                },
-              ),
-            ),
+            // ElevatedButton(
+            //   onPressed: () {
+            //     mostrarItensLoja();
+            //   },
+            //   child: Row(
+            //     mainAxisSize: MainAxisSize.min,
+            //     children: [
+            //       Icon(Icons.add),
+            //     ],
+            //   ),
+            // ),
+            // SizedBox(height: 16),
+            // // Tabela de lojas relacionadas a esse item
+            // Expanded(
+            //   child: LayoutBuilder(
+            //     builder: (context, constraints) {
+            //       return DataTable(
+            //         columnSpacing: constraints.maxWidth * 0.05,
+            //         columns: [
+            //           DataColumn(
+            //             label: Container(
+            //               width: constraints.maxWidth * 0.3,
+            //               child: Text('Loja'),
+            //             ),
+            //           ),
+            //           DataColumn(
+            //             label: Container(
+            //               width: constraints.maxWidth * 0.3,
+            //               child: Text('Preço de Venda'),
+            //             ),
+            //           ),
+            //           DataColumn(
+            //             label: Container(
+            //               width: constraints.maxWidth * 0.3,
+            //               child: Text('Ações'),
+            //             ),
+            //           ),
+            //         ],
+            //         rows: tabelaLojas.map((item) {
+            //           return DataRow(cells: [
+            //             DataCell(Text(item['loja']!)),
+            //             DataCell(Text(item['precoVenda']!)),
+            //             DataCell(Row(
+            //               children: [
+            //                 IconButton(
+            //                   icon: Icon(Icons.edit, color: Colors.blue),
+            //                   onPressed: () {
+            //                     mostrarItensLoja(item: item);
+            //                   },
+            //                 ),
+            //                 IconButton(
+            //                   icon: Icon(Icons.delete, color: Colors.red),
+            //                   onPressed: () {
+            //                     setState(() {
+            //                       tabelaLojas.remove(item);
+            //                     });
+            //                   },
+            //                 ),
+            //               ],
+            //             )),
+            //           ]);
+            //         }).toList(),
+            //       );
+            //     },
+            //   ),
+            // ),
             SizedBox(height: 24),
-            // Botão para salvar as alterações da inserção/edição do produto
+            //  Botão para salvar as alterações da inserção/edição do produto
             IconButton(
               icon: Icon(Icons.save, size: 30),
               onPressed: () {
