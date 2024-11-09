@@ -103,7 +103,6 @@ class _ConsultaProduto extends State<ConsultaProduto> {
     final response = await http.delete(url);
 
     if (response.statusCode == 200) {
-      print('Produto excluído com sucesso');
       setState(() {
         produtosAtualizados = fetchProdutos();
         produtosAtualizados.then((value) {
@@ -111,8 +110,6 @@ class _ConsultaProduto extends State<ConsultaProduto> {
           produtosFiltrados = value;
         });
       });
-    } else {
-      print('Erro ao excluir produto: ${response.statusCode}');
     }
   }
 
@@ -258,8 +255,8 @@ class _ConsultaProduto extends State<ConsultaProduto> {
                                           builder: (context) => PaginaProduto(
                                             isEditing: true,
                                             productId: produto.id.toString(),
-                                            loja: produto.descricao,
-                                            precoVenda:
+                                            descricao: produto.descricao,
+                                            custo:
                                                 'R\$ ${produto.custo.toStringAsFixed(2)}',
                                           ),
                                         ),
@@ -304,14 +301,14 @@ class _ConsultaProduto extends State<ConsultaProduto> {
 class PaginaProduto extends StatefulWidget {
   final bool isEditing;
   final String? productId;
-  final String? loja;
-  final String? precoVenda;
+  final String? descricao;
+  final String? custo;
 
   PaginaProduto({
     required this.isEditing,
     this.productId,
-    this.loja,
-    this.precoVenda,
+    this.descricao,
+    this.custo,
   });
 
   @override
@@ -327,8 +324,8 @@ class PaginaProdutoEdicao extends State<PaginaProduto> {
   void initState() {
     super.initState();
     if (widget.isEditing) {
-      controllerDescricao.text = widget.loja ?? '';
-      controllerCusto.text = widget.precoVenda?.replaceAll('R\$ ', '') ?? '';
+      controllerDescricao.text = widget.descricao ?? '';
+      controllerCusto.text = widget.custo?.replaceAll('R\$ ', '') ?? '';
     }
   }
 
@@ -348,12 +345,7 @@ class PaginaProdutoEdicao extends State<PaginaProduto> {
 
     if ((widget.isEditing && response.statusCode == 200) ||
         (!widget.isEditing && response.statusCode == 201)) {
-      print(widget.isEditing
-          ? 'Produto editado com sucesso'
-          : 'Produto adicionado com sucesso');
       Navigator.pop(context, true);
-    } else {
-      print('Erro ao salvar produto: ${response.statusCode}');
     }
   }
 
